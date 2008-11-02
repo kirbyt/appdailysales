@@ -135,7 +135,7 @@ fieldNameDayOrWeekDropdown = match[5]
 # select the first item but setting the date to yesterday's
 # date is easier.
 today = datetime.date.today() - datetime.timedelta(1)
-reportDate = '%i/%i/%i' % (today.month, today.day, today.year)
+reportDate = '%02i/%02i/%i' % (today.month, today.day, today.year)
 
 
 # And finally...we're ready to download yesterday's sales report.
