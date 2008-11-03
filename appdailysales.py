@@ -5,6 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008 Kirby Turner
 #
+# Version 1.2
 #
 # This script will download yesterday's daily sales report from
 # the iTunes Connect web site.  The downloaded file is stored
@@ -37,8 +38,12 @@
 
 
 # -- Change the following to match your credentials --
+# -- or use the command line options.               --
 appleId = 'Your Apple Id'
 password = 'Your Password'
+outputDirectory = ''
+unzipFile = False
+verbose = False
 # ----------------------------------------------------
 
 
@@ -47,12 +52,56 @@ import urllib2
 import cookielib
 import datetime
 import re
+import getopt
+import sys
+import os
+
 
 urlWebsite = 'https://itunesconnect.apple.com/WebObjects/iTunesConnect.woa'
 urlActionLogin = 'https://itunesconnect.apple.com%s'
 urlActionSalesReport = 'https://itunesconnect.apple.com%s'
 
-print '-- begin script --'
+
+def usage():
+	print '''usage: %s [options]
+Options and arguments:
+-h     : print this help message and exit (also --help)
+-a uid : your apple id (also --appleId)
+-p pwd : your password (also --password)
+-o dir : directory where download file is stored, default is the current working directory (also --outputDirectory)
+-v     : verbose output (also --verbose)
+-u     : unzip download fipe (also --unzip)''' % sys.argv[0]
+
+# Check for command line options. The command line options
+# override the globals set above if present.
+try: 
+	opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uv', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose'])
+except getopt.GetoptError, err:
+	#print help information and exit
+	print str(err)	# will print something like "option -x not recongized"
+	usage()
+	sys.exit(2)
+
+for o, a in opts:
+	if o in ('-h', '--help'):
+		usage()
+		sys.exit()
+	elif o in ('-a', '--appleId'):
+		appleId = a
+	elif o in ('-p', '--password'):
+		password = a
+	elif o in ('-o', '--outputDirectory'):
+		outputDirectory = a
+	elif o in ('-u', '--unzip'):
+		unzipFile = True
+	elif o in ('-v', '--verbose'):
+		verbose = True
+	else:
+		assert False, 'unhandled option'
+
+if verbose == True:
+	print '-- begin script --'
+
 
 # There is an issue with Python 2.5 where it assumes the 'version'
 # cookie value is always interger.  However, itunesconnect.apple.com
@@ -136,6 +185,8 @@ fieldNameDayOrWeekDropdown = match[5]
 # date is easier.
 today = datetime.date.today() - datetime.timedelta(1)
 reportDate = '%02i/%02i/%i' % (today.month, today.day, today.year)
+if verbose == True:
+	print 'reportDate: ', reportDate
 
 
 # And finally...we're ready to download yesterday's sales report.
@@ -145,10 +196,18 @@ filename = urlHandle.info().getheader('content-disposition').split('=')[1]
 filebuffer = urlHandle.read()
 urlHandle.close()
 
-
-print ' saving download file:', filename
+filename = outputDirectory + filename
+if verbose == True:
+	print 'saving download file:', filename
 downloadFile = open(filename, 'w')
 downloadFile.write(filebuffer)
 downloadFile.close()
 
-print '-- end of script --'
+if unzipFile == True:
+	if verbose == True:
+		print 'Unzipping archive file'
+
+	os.system('gunzip ' + filename)
+
+if verbose == True:
+	print '-- end of script --'
