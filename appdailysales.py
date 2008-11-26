@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008 Kirby Turner
 #
-# Version 1.3
+# Version 1.4
 #
 # This script will download yesterday's daily sales report from
 # the iTunes Connect web site.  The downloaded file is stored
@@ -156,9 +156,7 @@ def downloadFile(options):
 	if options.verbose == True:
 		print '-- begin script --'
 
-	urlWebsite = 'https://itunesconnect.apple.com/WebObjects/iTunesConnect.woa'
-	urlActionLogin = 'https://itunesconnect.apple.com%s'
-	urlActionSalesReport = 'https://itunesconnect.apple.com%s'
+	urlBase = 'https://itts.apple.com%s'
 
 	cj = MyCookieJar();
 	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
@@ -166,31 +164,24 @@ def downloadFile(options):
 
 	# Go to the iTunes Connect website and retrieve the
 	# form action for logging into the site.
+	urlWebsite = urlBase % '/cgi-bin/WebObjects/Piano.woa'
 	urlHandle = opener.open(urlWebsite)
 	html = urlHandle.read()
-	match = re.search('action="(.*)"', html)
-	urlActionLogin = urlActionLogin % match.group(1)
+	match = re.search('"appleConnectForm" action="(.*)"', html)
+	urlActionLogin = urlBase % match.group(1)
 
 
-	# Login to iTunes Connect web site and retrieve the
-	# link to the sales report page.
+	# Login to iTunes Connect web site and go to the sales 
+	# report page, get the form action url and form fields.  
+	# Note the sales report page will actually load a blank 
+	# page that redirects to the static URL. Best guess here 
+	# is that the server is setting some session variables 
+	# or something.
 	webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password})
 	urlHandle = opener.open(urlActionLogin, webFormLoginData)
 	html = urlHandle.read()
-	match =	re.search('href="(/WebObjects/iTunesConnect.woa/wo/.*)"><img', html)
-	urlActionSalesReport = urlActionSalesReport % match.group(1)
-
-
-	# Go to the sales report page, get the form action url and
-	# form fields.  Note the sales report page will actually
-	# load a blank page that redirects to the static URL. Best
-	# guess here is that the server is setting some session
-	# variables or something.
-	urlHandle = opener.open(urlActionSalesReport)
-	urlHandle = opener.open('https://itts.apple.com/cgi-bin/WebObjects/Piano.woa')
-	html = urlHandle.read()
 	match = re.findall('action="(.*)"', html)
-	urlDownload = "https://itts.apple.com%s" % match[1]
+	urlDownload = urlBase % match[1]
 
 
 	# Get the form field names needed to download the report.
@@ -208,7 +199,7 @@ def downloadFile(options):
 	urlHandle = opener.open(urlDownload, webFormSalesReportData)
 	html = urlHandle.read()
 	match = re.findall('action="(.*)"', html)
-	urlDownload = "https://itts.apple.com%s" % match[1]
+	urlDownload = urlBase % match[1]
 	match = re.findall('name="(.*?)"', html)
 	fieldNameDayOrWeekDropdown = match[5]
 
@@ -227,7 +218,12 @@ def downloadFile(options):
 	# And finally...we're ready to download yesterday's sales report.
 	webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:reportDate, fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'Download'})
 	urlHandle = opener.open(urlDownload, webFormSalesReportData)
-	filename = urlHandle.info().getheader('content-disposition').split('=')[1]
+	try:
+		filename = urlHandle.info().getheader('content-disposition').split('=')[1]
+	except AttributeError:
+		print '%s report is not available. Please try again later.' % reportDate
+		raise
+		
 	filebuffer = urlHandle.read()
 	urlHandle.close()
 
