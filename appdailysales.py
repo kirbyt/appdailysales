@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008 Kirby Turner
 #
-# Version 1.4
+# Version 1.5
 #
 # This script will download yesterday's daily sales report from
 # the iTunes Connect web site.  The downloaded file is stored
@@ -110,12 +110,12 @@ def processCmdArgs():
 		#print help information and exit
 		print str(err)	# will print something like "option -x not recongized"
 		usage()
-		sys.exit(2)
+		return 2
 
 	for o, a in opts:
 		if o in ('-h', '--help'):
 			usage()
-			sys.exit()
+			return 2
 		elif o in ('-a', '--appleId'):
 			appleId = a
 		elif o in ('-p', '--password'):
@@ -188,8 +188,8 @@ def downloadFile(options):
 	match = re.findall('name="(.*?)"', html)
 	fieldNameReportType = match[3]
 	fieldNameReportPeriod = match[4]
-	fieldNameDayOrWeekSelection = match[6]
-	fieldNameSubmitTypeName = match[7]
+	fieldNameDayOrWeekSelection = match[7]
+	fieldNameSubmitTypeName = match[8]
 
 
 	# Ah...more fun.  We need to post the page with the form
@@ -247,7 +247,9 @@ def downloadFile(options):
 	
 
 def main():
-	processCmdArgs()	# Will exit if usgae requested or invalid argument found.
+	if processCmdArgs() > 0:	# Will exit if usgae requested or invalid argument found.
+	  return 2
+	  
 	# Set report options.
 	options = ReportOptions()
 	options.appleId = appleId
@@ -260,8 +262,4 @@ def main():
 
 
 if __name__ == '__main__':
-	try:
-		main()
-	except:
-		traceback.print_exc()
-		sys.exit(1)
+  sys.exit(main())
