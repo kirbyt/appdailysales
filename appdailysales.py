@@ -69,23 +69,23 @@ import traceback
 # Note that the class attributes will default to the global
 # variable value equivalent.
 class ReportOptions:
-  def __getattr__(self, attrname):
-    if attrname == 'appleId':
-      return appleId
-    elif attrname == 'password':
-      return password
-    elif attrname == 'outputDirectory':
-      return outputDirectory
-    elif attrname == 'unzipFile':
-      return unzipFile
-    elif attrname == 'verbose':
-      return verbose
-    else:
-      raise AttributeError, attrname
+    def __getattr__(self, attrname):
+        if attrname == 'appleId':
+            return appleId
+        elif attrname == 'password':
+            return password
+        elif attrname == 'outputDirectory':
+            return outputDirectory
+        elif attrname == 'unzipFile':
+            return unzipFile
+        elif attrname == 'verbose':
+            return verbose
+        else:
+            raise AttributeError, attrname
 
 
 def usage():
-  print '''usage: %s [options]
+    print '''usage: %s [options]
 Options and arguments:
 -h     : print this help message and exit (also --help)
 -a uid : your apple id (also --appleId)
@@ -96,38 +96,38 @@ Options and arguments:
 
 
 def processCmdArgs():
-  global appleId
-  global password
-  global outputDirectory
-  global unzipFile
-  global verbose
+    global appleId
+    global password
+    global outputDirectory
+    global unzipFile
+    global verbose
 
-  # Check for command line options. The command line options
-  # override the globals set above if present.
-  try: 
-    opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uv', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose'])
-  except getopt.GetoptError, err:
-    #print help information and exit
-    print str(err)  # will print something like "option -x not recongized"
-    usage()
-    return 2
+    # Check for command line options. The command line options
+    # override the globals set above if present.
+    try: 
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uv', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose'])
+    except getopt.GetoptError, err:
+        #print help information and exit
+        print str(err)  # will print something like "option -x not recongized"
+        usage()
+        return 2
 
-  for o, a in opts:
-    if o in ('-h', '--help'):
-      usage()
-      return 2
-    elif o in ('-a', '--appleId'):
-      appleId = a
-    elif o in ('-p', '--password'):
-      password = a
-    elif o in ('-o', '--outputDirectory'):
-      outputDirectory = a
-    elif o in ('-u', '--unzip'):
-      unzipFile = True
-    elif o in ('-v', '--verbose'):
-      verbose = True
-    else:
-      assert False, 'unhandled option'
+    for o, a in opts:
+        if o in ('-h', '--help'):
+            usage()
+            return 2
+        elif o in ('-a', '--appleId'):
+            appleId = a
+        elif o in ('-p', '--password'):
+            password = a
+        elif o in ('-o', '--outputDirectory'):
+            outputDirectory = a
+        elif o in ('-u', '--unzip'):
+            unzipFile = True
+        elif o in ('-v', '--verbose'):
+            verbose = True
+        else:
+            assert False, 'unhandled option'
 
 
 # There is an issue with Python 2.5 where it assumes the 'version'
@@ -137,129 +137,129 @@ def processCmdArgs():
 #
 # More information at: http://bugs.python.org/issue3924
 class MyCookieJar(cookielib.CookieJar):
-  def _cookie_from_cookie_tuple(self, tup, request):
-    name, value, standard, rest = tup
-    version = standard.get('version', None)
-    if version is not None:
-      version = version.replace('"', '')
-      standard["version"] = version
-    return cookielib.CookieJar._cookie_from_cookie_tuple(self, tup, request)
+    def _cookie_from_cookie_tuple(self, tup, request):
+        name, value, standard, rest = tup
+        version = standard.get('version', None)
+        if version is not None:
+            version = version.replace('"', '')
+            standard["version"] = version
+        return cookielib.CookieJar._cookie_from_cookie_tuple(self, tup, request)
 
 
 def showCookies(cj):
-  for index, cookie in enumerate(cj):
-    print index, ' : ', cookie
-  
+    for index, cookie in enumerate(cj):
+        print index, ' : ', cookie
+
 
 
 def downloadFile(options):
-  if options.verbose == True:
-    print '-- begin script --'
-
-  urlBase = 'https://itts.apple.com%s'
-
-  cj = MyCookieJar();
-  opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-
-
-  # Go to the iTunes Connect website and retrieve the
-  # form action for logging into the site.
-  urlWebsite = urlBase % '/cgi-bin/WebObjects/Piano.woa'
-  urlHandle = opener.open(urlWebsite)
-  html = urlHandle.read()
-  match = re.search('"appleConnectForm" action="(.*)"', html)
-  urlActionLogin = urlBase % match.group(1)
-
-
-  # Login to iTunes Connect web site and go to the sales 
-  # report page, get the form action url and form fields.  
-  # Note the sales report page will actually load a blank 
-  # page that redirects to the static URL. Best guess here 
-  # is that the server is setting some session variables 
-  # or something.
-  webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password})
-  urlHandle = opener.open(urlActionLogin, webFormLoginData)
-  html = urlHandle.read()
-  match = re.findall('action="(.*)"', html)
-  urlDownload = urlBase % match[1]
-
-
-  # Get the form field names needed to download the report.
-  match = re.findall('name="(.*?)"', html)
-  fieldNameReportType = match[3]
-  fieldNameReportPeriod = match[4]
-  fieldNameDayOrWeekSelection = match[7]
-  fieldNameSubmitTypeName = match[8]
-
-
-  # Ah...more fun.  We need to post the page with the form
-  # fields collected so far.  This will give us the remaining
-  # form fields needed to get the download file.
-  webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'ShowDropDown'})
-  urlHandle = opener.open(urlDownload, webFormSalesReportData)
-  html = urlHandle.read()
-  match = re.findall('action="(.*)"', html)
-  urlDownload = urlBase % match[1]
-  match = re.findall('name="(.*?)"', html)
-  fieldNameDayOrWeekDropdown = match[5]
-
-
-  # Set report date to yesterday's date.  This will be the most
-  # recent daily report available.  Another option would be to
-  # webscrape the dropdown list of available report dates and
-  # select the first item but setting the date to yesterday's
-  # date is easier.
-  today = datetime.date.today() - datetime.timedelta(1)
-  reportDate = '%02i/%02i/%i' % (today.month, today.day, today.year)
-  if options.verbose == True:
-    print 'reportDate: ', reportDate
-
-
-  # And finally...we're ready to download yesterday's sales report.
-  webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:reportDate, fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'Download'})
-  urlHandle = opener.open(urlDownload, webFormSalesReportData)
-  try:
-    filename = urlHandle.info().getheader('content-disposition').split('=')[1]
-  except AttributeError:
-    print '%s report is not available. Please try again later.' % reportDate
-    raise
-    
-  filebuffer = urlHandle.read()
-  urlHandle.close()
-
-  filename = options.outputDirectory + filename
-  if options.verbose == True:
-    print 'saving download file:', filename
-  downloadFile = open(filename, 'w')
-  downloadFile.write(filebuffer)
-  downloadFile.close()
-
-  if options.unzipFile == True:
     if options.verbose == True:
-      print 'Unzipping archive file'
+        print '-- begin script --'
 
-    os.system('gunzip ' + filename)
+    urlBase = 'https://itts.apple.com%s'
 
-  if options.verbose == True:
-    print '-- end of script --'
-  
-  return filename
-  
+    cj = MyCookieJar();
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+
+
+    # Go to the iTunes Connect website and retrieve the
+    # form action for logging into the site.
+    urlWebsite = urlBase % '/cgi-bin/WebObjects/Piano.woa'
+    urlHandle = opener.open(urlWebsite)
+    html = urlHandle.read()
+    match = re.search('"appleConnectForm" action="(.*)"', html)
+    urlActionLogin = urlBase % match.group(1)
+
+
+    # Login to iTunes Connect web site and go to the sales 
+    # report page, get the form action url and form fields.  
+    # Note the sales report page will actually load a blank 
+    # page that redirects to the static URL. Best guess here 
+    # is that the server is setting some session variables 
+    # or something.
+    webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password})
+    urlHandle = opener.open(urlActionLogin, webFormLoginData)
+    html = urlHandle.read()
+    match = re.findall('action="(.*)"', html)
+    urlDownload = urlBase % match[1]
+
+
+    # Get the form field names needed to download the report.
+    match = re.findall('name="(.*?)"', html)
+    fieldNameReportType = match[3]
+    fieldNameReportPeriod = match[4]
+    fieldNameDayOrWeekSelection = match[7]
+    fieldNameSubmitTypeName = match[8]
+
+
+    # Ah...more fun.  We need to post the page with the form
+    # fields collected so far.  This will give us the remaining
+    # form fields needed to get the download file.
+    webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'ShowDropDown'})
+    urlHandle = opener.open(urlDownload, webFormSalesReportData)
+    html = urlHandle.read()
+    match = re.findall('action="(.*)"', html)
+    urlDownload = urlBase % match[1]
+    match = re.findall('name="(.*?)"', html)
+    fieldNameDayOrWeekDropdown = match[5]
+
+
+    # Set report date to yesterday's date.  This will be the most
+    # recent daily report available.  Another option would be to
+    # webscrape the dropdown list of available report dates and
+    # select the first item but setting the date to yesterday's
+    # date is easier.
+    today = datetime.date.today() - datetime.timedelta(1)
+    reportDate = '%02i/%02i/%i' % (today.month, today.day, today.year)
+    if options.verbose == True:
+        print 'reportDate: ', reportDate
+
+
+    # And finally...we're ready to download yesterday's sales report.
+    webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:reportDate, fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'Download'})
+    urlHandle = opener.open(urlDownload, webFormSalesReportData)
+    try:
+        filename = urlHandle.info().getheader('content-disposition').split('=')[1]
+    except AttributeError:
+        print '%s report is not available. Please try again later.' % reportDate
+        raise
+
+    filebuffer = urlHandle.read()
+    urlHandle.close()
+
+    filename = options.outputDirectory + filename
+    if options.verbose == True:
+        print 'saving download file:', filename
+    downloadFile = open(filename, 'w')
+    downloadFile.write(filebuffer)
+    downloadFile.close()
+
+    if options.unzipFile == True:
+        if options.verbose == True:
+            print 'Unzipping archive file'
+
+        os.system('gunzip ' + filename)
+
+    if options.verbose == True:
+        print '-- end of script --'
+
+    return filename
+
 
 def main():
-  if processCmdArgs() > 0:  # Will exit if usgae requested or invalid argument found.
-    return 2
-    
-  # Set report options.
-  options = ReportOptions()
-  options.appleId = appleId
-  options.password = password
-  options.outputDirectory = outputDirectory
-  options.unzipFile = unzipFile
-  options.verbose = verbose
-  # Download the file.
-  downloadFile(options)
+    if processCmdArgs() > 0:  # Will exit if usgae requested or invalid argument found.
+        return 2
+
+    # Set report options.
+    options = ReportOptions()
+    options.appleId = appleId
+    options.password = password
+    options.outputDirectory = outputDirectory
+    options.unzipFile = unzipFile
+    options.verbose = verbose
+    # Download the file.
+    downloadFile(options)
 
 
 if __name__ == '__main__':
-  sys.exit(main())
+    sys.exit(main())
