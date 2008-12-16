@@ -55,17 +55,23 @@ import re
 import getopt
 import sys
 import os
+import gzip
+import StringIO
 import traceback
 
+try:
+    import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 # The class ReportOptions defines a structure for passing
 # report options to the download routine. The expected
 # data attributes are:
-# appleId
-# password
-# outputDirectory
-# unzipFile
-# verbose
+#   appleId
+#   password
+#   outputDirectory
+#   unzipFile
+#   verbose
 # Note that the class attributes will default to the global
 # variable value equivalent.
 class ReportOptions:
@@ -92,7 +98,8 @@ Options and arguments:
 -p pwd : your password (also --password)
 -o dir : directory where download file is stored, default is the current working directory (also --outputDirectory)
 -v     : verbose output (also --verbose)
--u     : unzip download fipe (also --unzip)''' % sys.argv[0]
+-u     : unzip download fipe (also --unzip)
+-d num : number of days to download (also --days)''' % sys.argv[0]
 
 
 def processCmdArgs():
@@ -105,7 +112,7 @@ def processCmdArgs():
     # Check for command line options. The command line options
     # override the globals set above if present.
     try: 
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uv', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose'])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uvd:', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose', 'days='])
     except getopt.GetoptError, err:
         #print help information and exit
         print str(err)  # will print something like "option -x not recongized"
@@ -149,7 +156,7 @@ class MyCookieJar(cookielib.CookieJar):
 def showCookies(cj):
     for index, cookie in enumerate(cj):
         print index, ' : ', cookie
-
+    
 
 
 def downloadFile(options):
@@ -180,16 +187,26 @@ def downloadFile(options):
     webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password})
     urlHandle = opener.open(urlActionLogin, webFormLoginData)
     html = urlHandle.read()
-    match = re.findall('action="(.*)"', html)
-    urlDownload = urlBase % match[1]
-
 
     # Get the form field names needed to download the report.
-    match = re.findall('name="(.*?)"', html)
-    fieldNameReportType = match[3]
-    fieldNameReportPeriod = match[4]
-    fieldNameDayOrWeekSelection = match[7]
-    fieldNameSubmitTypeName = match[8]
+    if BeautifulSoup:
+        soup = BeautifulSoup.BeautifulSoup( html )
+        form = soup.find( 'form', attrs={'name': 'frmVendorPage' } )
+        urlDownload = urlBase % form['action']
+        
+        fieldNameReportType = soup.find( 'select', attrs={'id': 'selReportType'} )['name']
+        fieldNameReportPeriod = soup.find( 'select', attrs={'id': 'selDateType'} )['name']
+        fieldNameDayOrWeekSelection = soup.find( 'input', attrs={'name': 'hiddenDayOrWeekSelection'} )['name'] #This is kinda redundant
+        fieldNameSubmitTypeName = soup.find( 'input', attrs={'name': 'hiddenSubmitTypeName'} )['name'] #This is kinda redundant, too
+    else:
+        match = re.findall('action="(.*)"', html)
+        urlDownload = urlBase % match[1]
+
+        match = re.findall('name="(.*?)"', html)
+        fieldNameReportType = match[3]
+        fieldNameReportPeriod = match[4]
+        fieldNameDayOrWeekSelection = match[7]
+        fieldNameSubmitTypeName = match[8]
 
 
     # Ah...more fun.  We need to post the page with the form
@@ -198,58 +215,75 @@ def downloadFile(options):
     webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'ShowDropDown'})
     urlHandle = opener.open(urlDownload, webFormSalesReportData)
     html = urlHandle.read()
-    match = re.findall('action="(.*)"', html)
-    urlDownload = urlBase % match[1]
-    match = re.findall('name="(.*?)"', html)
-    fieldNameDayOrWeekDropdown = match[5]
 
+    reportDates = []
+    if BeautifulSoup:
+        soup = BeautifulSoup.BeautifulSoup( html )
+        form = soup.find( 'form', attrs={'name': 'frmVendorPage' } )
+        urlDownload = urlBase % form['action']
+        select = soup.find( 'select', attrs={'id': 'dayorweekdropdown'} )
+        fieldNameDayOrWeekDropdown = select['name']
+        
+        for option in select.findAll('option'):
+            reportDates.append( option.string )
+    else:
+        match = re.findall('action="(.*)"', html)
+        urlDownload = urlBase % match[1]
+        match = re.findall('name="(.*?)"', html)
+        fieldNameDayOrWeekDropdown = match[5]
 
-    # Set report date to yesterday's date.  This will be the most
-    # recent daily report available.  Another option would be to
-    # webscrape the dropdown list of available report dates and
-    # select the first item but setting the date to yesterday's
-    # date is easier.
-    today = datetime.date.today() - datetime.timedelta(1)
-    reportDate = '%02i/%02i/%i' % (today.month, today.day, today.year)
+        # Set report date to yesterday's date.  This will be the most
+        # recent daily report available.
+        today = datetime.date.today() - datetime.timedelta(1)
+        date = '%02i/%02i/%i' % (today.month, today.day, today.year)
+        reportDates.append( date )
+    
     if options.verbose == True:
-        print 'reportDate: ', reportDate
+        print 'reportDates: ', reportDates
 
+    filenames = []
+    for downloadReportDate in reportDates:
+        # And finally...we're ready to download yesterday's sales report.
+        webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:downloadReportDate, fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'Download'})
+        urlHandle = opener.open(urlDownload, webFormSalesReportData)
+        try:
+            filename = urlHandle.info().getheader('content-disposition').split('=')[1]
+        except AttributeError:
+            print '%s report is not available. Please try again later.' % reportDate
+            raise
+            
+        filebuffer = urlHandle.read()
+        urlHandle.close()
 
-    # And finally...we're ready to download yesterday's sales report.
-    webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:reportDate, fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'Download'})
-    urlHandle = opener.open(urlDownload, webFormSalesReportData)
-    try:
-        filename = urlHandle.info().getheader('content-disposition').split('=')[1]
-    except AttributeError:
-        print '%s report is not available. Please try again later.' % reportDate
-        raise
+        if options.unzipFile == True:
+            #Use GzipFile to de-gzip the data
+            ioBuffer = StringIO.StringIO( filebuffer )
+            gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
+            filebuffer = gzipIO.read()
+    
+        filename = options.outputDirectory + filename
+        if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
+            filename = os.path.splitext( filename )[0]
 
-    filebuffer = urlHandle.read()
-    urlHandle.close()
-
-    filename = options.outputDirectory + filename
-    if options.verbose == True:
-        print 'saving download file:', filename
-    downloadFile = open(filename, 'w')
-    downloadFile.write(filebuffer)
-    downloadFile.close()
-
-    if options.unzipFile == True:
         if options.verbose == True:
-            print 'Unzipping archive file'
+            print 'saving download file:', filename
 
-        os.system('gunzip ' + filename)
+        downloadFile = open(filename, 'w')
+        downloadFile.write(filebuffer)
+        downloadFile.close()
+
+        filenames.append( filename )
 
     if options.verbose == True:
         print '-- end of script --'
-
-    return filename
-
+    
+    return filenames
+    
 
 def main():
-    if processCmdArgs() > 0:  # Will exit if usgae requested or invalid argument found.
-        return 2
-
+    if processCmdArgs() > 0:    # Will exit if usgae requested or invalid argument found.
+      return 2
+      
     # Set report options.
     options = ReportOptions()
     options.appleId = appleId
@@ -262,4 +296,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+  sys.exit(main())
