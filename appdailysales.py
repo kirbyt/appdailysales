@@ -5,7 +5,11 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008 Kirby Turner
 #
-# Version 1.5
+# Version 1.6
+#
+# Latest version and additional information available at:
+#   http://appdailysales.googlecode.com/
+#
 #
 # This script will download yesterday's daily sales report from
 # the iTunes Connect web site.  The downloaded file is stored
@@ -16,6 +20,11 @@
 # names.  In other words, these values change from session to
 # session.  So to get to the download file we must navigate  
 # the site and webscrape the pages.  Joy, joy.
+#
+#
+# Contributors:
+#   Leon Ho
+#   Quentin D. Carnicelli
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,6 +53,7 @@ password = 'Your Password'
 outputDirectory = ''
 unzipFile = False
 verbose = False
+daysToDownload = 1
 # ----------------------------------------------------
 
 
@@ -72,6 +82,7 @@ except ImportError:
 #   outputDirectory
 #   unzipFile
 #   verbose
+#   daysToDownload
 # Note that the class attributes will default to the global
 # variable value equivalent.
 class ReportOptions:
@@ -86,6 +97,8 @@ class ReportOptions:
             return unzipFile
         elif attrname == 'verbose':
             return verbose
+        elif attrname == 'daysToDownload':
+            return daysToDownload
         else:
             raise AttributeError, attrname
 
@@ -97,9 +110,9 @@ Options and arguments:
 -a uid : your apple id (also --appleId)
 -p pwd : your password (also --password)
 -o dir : directory where download file is stored, default is the current working directory (also --outputDirectory)
--v     : verbose output (also --verbose)
--u     : unzip download fipe (also --unzip)
--d num : number of days to download (also --days)''' % sys.argv[0]
+-v     : verbose output, default is off (also --verbose)
+-u     : unzip download file, default is off (also --unzip)
+-d num : number of days to download, default is 1 (also --days)''' % sys.argv[0]
 
 
 def processCmdArgs():
@@ -108,6 +121,7 @@ def processCmdArgs():
     global outputDirectory
     global unzipFile
     global verbose
+    global daysToDownload
 
     # Check for command line options. The command line options
     # override the globals set above if present.
@@ -133,6 +147,8 @@ def processCmdArgs():
             unzipFile = True
         elif o in ('-v', '--verbose'):
             verbose = True
+        elif o in ('-d', '--days'):
+            daysToDownload = a
         else:
             assert False, 'unhandled option'
 
@@ -190,6 +206,8 @@ def downloadFile(options):
 
     # Get the form field names needed to download the report.
     if BeautifulSoup:
+        if options.verbose == True:
+            print 'using BeautifulSoap for HTML parsing'
         soup = BeautifulSoup.BeautifulSoup( html )
         form = soup.find( 'form', attrs={'name': 'frmVendorPage' } )
         urlDownload = urlBase % form['action']
@@ -224,8 +242,13 @@ def downloadFile(options):
         select = soup.find( 'select', attrs={'id': 'dayorweekdropdown'} )
         fieldNameDayOrWeekDropdown = select['name']
         
+        i = 0
         for option in select.findAll('option'):
-            reportDates.append( option.string )
+            if i < int(options.daysToDownload):
+                reportDates.append( option.string )
+                i = i + 1
+            else:
+                break
     else:
         match = re.findall('action="(.*)"', html)
         urlDownload = urlBase % match[1]
@@ -234,9 +257,10 @@ def downloadFile(options):
 
         # Set report date to yesterday's date.  This will be the most
         # recent daily report available.
-        today = datetime.date.today() - datetime.timedelta(1)
-        date = '%02i/%02i/%i' % (today.month, today.day, today.year)
-        reportDates.append( date )
+        for i in range(int(options.daysToDownload)):
+            today = datetime.date.today() - datetime.timedelta(i + 1)
+            date = '%02i/%02i/%i' % (today.month, today.day, today.year)
+            reportDates.append( date )
     
     if options.verbose == True:
         print 'reportDates: ', reportDates
@@ -249,13 +273,15 @@ def downloadFile(options):
         try:
             filename = urlHandle.info().getheader('content-disposition').split('=')[1]
         except AttributeError:
-            print '%s report is not available. Please try again later.' % reportDate
+            print '%s report is not available. Please try again later.' % downloadReportDate
             raise
             
         filebuffer = urlHandle.read()
         urlHandle.close()
 
         if options.unzipFile == True:
+            if options.verbose == True:
+                print 'unzipping archive file: ', filename
             #Use GzipFile to de-gzip the data
             ioBuffer = StringIO.StringIO( filebuffer )
             gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
@@ -291,6 +317,7 @@ def main():
     options.outputDirectory = outputDirectory
     options.unzipFile = unzipFile
     options.verbose = verbose
+    options.daysToDownload = daysToDownload
     # Download the file.
     downloadFile(options)
 
