@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008 Kirby Turner
 #
-# Version 1.6
+# Version 1.7
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -54,6 +54,7 @@ outputDirectory = ''
 unzipFile = False
 verbose = False
 daysToDownload = 1
+dateToDownload = None
 # ----------------------------------------------------
 
 
@@ -99,6 +100,8 @@ class ReportOptions:
             return verbose
         elif attrname == 'daysToDownload':
             return daysToDownload
+        elif attrname == 'dateToDownload':
+            return dateToDownload
         else:
             raise AttributeError, attrname
 
@@ -112,7 +115,8 @@ Options and arguments:
 -o dir : directory where download file is stored, default is the current working directory (also --outputDirectory)
 -v     : verbose output, default is off (also --verbose)
 -u     : unzip download file, default is off (also --unzip)
--d num : number of days to download, default is 1 (also --days)''' % sys.argv[0]
+-d num : number of days to download, default is 1 (also --days)
+-D mm/dd/yyyy : report date to download, -d option is ignored when -D is used (also --date)''' % sys.argv[0]
 
 
 def processCmdArgs():
@@ -122,11 +126,12 @@ def processCmdArgs():
     global unzipFile
     global verbose
     global daysToDownload
+    global dateToDownload
 
     # Check for command line options. The command line options
     # override the globals set above if present.
     try: 
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uvd:', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose', 'days='])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uvd:D:', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date='])
     except getopt.GetoptError, err:
         #print help information and exit
         print str(err)  # will print something like "option -x not recongized"
@@ -149,6 +154,8 @@ def processCmdArgs():
             verbose = True
         elif o in ('-d', '--days'):
             daysToDownload = a
+        elif o in ('-D', '--date'):
+            dateToDownload = a
         else:
             assert False, 'unhandled option'
 
@@ -219,7 +226,6 @@ def downloadFile(options):
     else:
         match = re.findall('action="(.*)"', html)
         urlDownload = urlBase % match[1]
-
         match = re.findall('name="(.*?)"', html)
         fieldNameReportType = match[3]
         fieldNameReportPeriod = match[4]
@@ -234,37 +240,32 @@ def downloadFile(options):
     urlHandle = opener.open(urlDownload, webFormSalesReportData)
     html = urlHandle.read()
 
-    reportDates = []
     if BeautifulSoup:
         soup = BeautifulSoup.BeautifulSoup( html )
         form = soup.find( 'form', attrs={'name': 'frmVendorPage' } )
         urlDownload = urlBase % form['action']
         select = soup.find( 'select', attrs={'id': 'dayorweekdropdown'} )
         fieldNameDayOrWeekDropdown = select['name']
-        
-        i = 0
-        for option in select.findAll('option'):
-            if i < int(options.daysToDownload):
-                reportDates.append( option.string )
-                i = i + 1
-            else:
-                break
     else:
         match = re.findall('action="(.*)"', html)
         urlDownload = urlBase % match[1]
         match = re.findall('name="(.*?)"', html)
         fieldNameDayOrWeekDropdown = match[5]
 
-        # Set report date to yesterday's date.  This will be the most
-        # recent daily report available.
+    # Set the list of report dates.
+    reportDates = []
+    if options.dateToDownload == None:
         for i in range(int(options.daysToDownload)):
             today = datetime.date.today() - datetime.timedelta(i + 1)
             date = '%02i/%02i/%i' % (today.month, today.day, today.year)
             reportDates.append( date )
-    
+    else:
+        reportDates = [options.dateToDownload]
+        
     if options.verbose == True:
         print 'reportDates: ', reportDates
 
+    unavailableCount = 0
     filenames = []
     for downloadReportDate in reportDates:
         # And finally...we're ready to download yesterday's sales report.
@@ -272,39 +273,41 @@ def downloadFile(options):
         urlHandle = opener.open(urlDownload, webFormSalesReportData)
         try:
             filename = urlHandle.info().getheader('content-disposition').split('=')[1]
-        except AttributeError:
-            print '%s report is not available. Please try again later.' % downloadReportDate
-            raise
-            
-        filebuffer = urlHandle.read()
-        urlHandle.close()
+            filebuffer = urlHandle.read()
+            urlHandle.close()
 
-        if options.unzipFile == True:
+            if options.unzipFile == True:
+                if options.verbose == True:
+                    print 'unzipping archive file: ', filename
+                #Use GzipFile to de-gzip the data
+                ioBuffer = StringIO.StringIO( filebuffer )
+                gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
+                filebuffer = gzipIO.read()
+
+            filename = options.outputDirectory + filename
+            if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
+                filename = os.path.splitext( filename )[0]
+
             if options.verbose == True:
-                print 'unzipping archive file: ', filename
-            #Use GzipFile to de-gzip the data
-            ioBuffer = StringIO.StringIO( filebuffer )
-            gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
-            filebuffer = gzipIO.read()
-    
-        filename = options.outputDirectory + filename
-        if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
-            filename = os.path.splitext( filename )[0]
+                print 'saving download file:', filename
 
-        if options.verbose == True:
-            print 'saving download file:', filename
+            downloadFile = open(filename, 'w')
+            downloadFile.write(filebuffer)
+            downloadFile.close()
 
-        downloadFile = open(filename, 'w')
-        downloadFile.write(filebuffer)
-        downloadFile.close()
+            filenames.append( filename )
+        except AttributeError:
+            print '%s report is not available - try again later.' % downloadReportDate
+            unavailableCount += 1
 
-        filenames.append( filename )
+    if unavailableCount > 0:
+        raise Exception, '%i report(s) not available - try again later' % unavailableCount
 
     if options.verbose == True:
         print '-- end of script --'
-    
+
     return filenames
-    
+
 
 def main():
     if processCmdArgs() > 0:    # Will exit if usgae requested or invalid argument found.
@@ -318,6 +321,7 @@ def main():
     options.unzipFile = unzipFile
     options.verbose = verbose
     options.daysToDownload = daysToDownload
+    options.dateToDownload = dateToDownload
     # Download the file.
     downloadFile(options)
 
