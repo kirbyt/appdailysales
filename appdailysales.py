@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008 Kirby Turner
 #
-# Version 1.7
+# Version 1.8
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -25,6 +25,7 @@
 # Contributors:
 #   Leon Ho
 #   Rogue Amoeba Software, LLC
+#   Keith Simmons
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -284,7 +285,7 @@ def downloadFile(options):
                 gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
                 filebuffer = gzipIO.read()
 
-            filename = options.outputDirectory + filename
+            filename = os.path.join(options.outputDirectory, filename)
             if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
                 filename = os.path.splitext( filename )[0]
 
