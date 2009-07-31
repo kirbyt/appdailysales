@@ -3,9 +3,9 @@
 # appdailysales.py
 #
 # iTune Connect Daily Sales Reports Downloader
-# Copyright 2008 Kirby Turner
+# Copyright 2008-2009 Kirby Turner
 #
-# Version 1.8
+# Version 1.8.1
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -26,6 +26,7 @@
 #   Leon Ho
 #   Rogue Amoeba Software, LLC
 #   Keith Simmons
+#   Andrew de los Reyes
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -182,6 +183,12 @@ def showCookies(cj):
         print index, ' : ', cookie
     
 
+def readHtml(opener, url, data=None):
+    request = urllib2.Request(url, data)
+    urlHandle = opener.open(request)
+    html = urlHandle.read()
+    return html
+
 
 def downloadFile(options):
     if options.verbose == True:
@@ -196,9 +203,8 @@ def downloadFile(options):
     # Go to the iTunes Connect website and retrieve the
     # form action for logging into the site.
     urlWebsite = urlBase % '/cgi-bin/WebObjects/Piano.woa'
-    urlHandle = opener.open(urlWebsite)
-    html = urlHandle.read()
-    match = re.search('"appleConnectForm" action="(.*)"', html)
+    html = readHtml(opener, urlWebsite)
+    match = re.search('" action="(.*)"', html)
     urlActionLogin = urlBase % match.group(1)
 
 
@@ -208,9 +214,9 @@ def downloadFile(options):
     # page that redirects to the static URL. Best guess here 
     # is that the server is setting some session variables 
     # or something.
-    webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password})
-    urlHandle = opener.open(urlActionLogin, webFormLoginData)
-    html = urlHandle.read()
+    webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password, '1.Continue.x':'0', '1.Continue.y':'0'})
+    html = readHtml(opener, urlActionLogin, webFormLoginData)
+
 
     # Get the form field names needed to download the report.
     if BeautifulSoup:
@@ -225,21 +231,21 @@ def downloadFile(options):
         fieldNameDayOrWeekSelection = soup.find( 'input', attrs={'name': 'hiddenDayOrWeekSelection'} )['name'] #This is kinda redundant
         fieldNameSubmitTypeName = soup.find( 'input', attrs={'name': 'hiddenSubmitTypeName'} )['name'] #This is kinda redundant, too
     else:
-        match = re.findall('action="(.*)"', html)
-        urlDownload = urlBase % match[1]
+        match = re.findall('name="frmVendorPage" action="(.*)"', html)
+        urlDownload = urlBase % match[0]
         match = re.findall('name="(.*?)"', html)
-        fieldNameReportType = match[3]
-        fieldNameReportPeriod = match[4]
-        fieldNameDayOrWeekSelection = match[7]
-        fieldNameSubmitTypeName = match[8]
+        fieldNameReportType = match[4] # selReportType
+        fieldNameReportPeriod = match[5] # selDateType
+        fieldNameDayOrWeekSelection = match[8] # hiddenDayOrWeekSelection
+        fieldNameSubmitTypeName = match[9] # hiddenSubmitTypeName
 
 
     # Ah...more fun.  We need to post the page with the form
     # fields collected so far.  This will give us the remaining
     # form fields needed to get the download file.
     webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'ShowDropDown'})
-    urlHandle = opener.open(urlDownload, webFormSalesReportData)
-    html = urlHandle.read()
+    html = readHtml(opener, urlDownload, webFormSalesReportData)
+
 
     if BeautifulSoup:
         soup = BeautifulSoup.BeautifulSoup( html )
@@ -248,10 +254,10 @@ def downloadFile(options):
         select = soup.find( 'select', attrs={'id': 'dayorweekdropdown'} )
         fieldNameDayOrWeekDropdown = select['name']
     else:
-        match = re.findall('action="(.*)"', html)
-        urlDownload = urlBase % match[1]
+        match = re.findall('name="frmVendorPage" action="(.*)"', html)
+        urlDownload = urlBase % match[0]
         match = re.findall('name="(.*?)"', html)
-        fieldNameDayOrWeekDropdown = match[5]
+        fieldNameDayOrWeekDropdown = match[6]
 
     # Set the list of report dates.
     reportDates = []
@@ -270,7 +276,7 @@ def downloadFile(options):
     filenames = []
     for downloadReportDate in reportDates:
         # And finally...we're ready to download yesterday's sales report.
-        webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:downloadReportDate, fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'Download'})
+        webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:downloadReportDate, 'download':'Download', fieldNameDayOrWeekSelection:downloadReportDate, fieldNameSubmitTypeName:'Download'})
         urlHandle = opener.open(urlDownload, webFormSalesReportData)
         try:
             filename = urlHandle.info().getheader('content-disposition').split('=')[1]
