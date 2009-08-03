@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2009 Kirby Turner
 #
-# Version 1.8.1
+# Version 1.9
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -27,6 +27,7 @@
 #   Rogue Amoeba Software, LLC
 #   Keith Simmons
 #   Andrew de los Reyes
+#   Maarten Billemont
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,6 +78,14 @@ try:
 except ImportError:
     BeautifulSoup = None
 
+
+class ITCException(Exception):
+    def __init__(self,value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value);
+
+
 # The class ReportOptions defines a structure for passing
 # report options to the download routine. The expected
 # data attributes are:
@@ -114,6 +123,7 @@ Options and arguments:
 -h     : print this help message and exit (also --help)
 -a uid : your apple id (also --appleId)
 -p pwd : your password (also --password)
+-P     : read the password from stdin (also --passwordStdin)
 -o dir : directory where download file is stored, default is the current working directory (also --outputDirectory)
 -v     : verbose output, default is off (also --verbose)
 -u     : unzip download file, default is off (also --unzip)
@@ -133,7 +143,7 @@ def processCmdArgs():
     # Check for command line options. The command line options
     # override the globals set above if present.
     try: 
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:o:uvd:D:', ['help', 'appleId=', 'password=', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date='])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date='])
     except getopt.GetoptError, err:
         #print help information and exit
         print str(err)  # will print something like "option -x not recongized"
@@ -148,6 +158,8 @@ def processCmdArgs():
             appleId = a
         elif o in ('-p', '--password'):
             password = a
+        elif o in ('-P', '--passwordStdin'):
+            password = sys.stdin.read()
         elif o in ('-o', '--outputDirectory'):
             outputDirectory = a
         elif o in ('-u', '--unzip'):
@@ -308,7 +320,7 @@ def downloadFile(options):
             unavailableCount += 1
 
     if unavailableCount > 0:
-        raise Exception, '%i report(s) not available - try again later' % unavailableCount
+        raise ITCException, '%i report(s) not available - try again later' % unavailableCount
 
     if options.verbose == True:
         print '-- end of script --'
@@ -330,7 +342,11 @@ def main():
     options.daysToDownload = daysToDownload
     options.dateToDownload = dateToDownload
     # Download the file.
-    downloadFile(options)
+    try:
+        downloadFile(options)
+    except ITCException, e:
+        print e.value
+        return 1
 
 
 if __name__ == '__main__':
