@@ -246,10 +246,10 @@ def downloadFile(options):
         match = re.findall('name="frmVendorPage" action="(.*)"', html)
         urlDownload = urlBase % match[0]
         match = re.findall('name="(.*?)"', html)
-        fieldNameReportType = match[4] # selReportType
-        fieldNameReportPeriod = match[5] # selDateType
-        fieldNameDayOrWeekSelection = match[8] # hiddenDayOrWeekSelection
-        fieldNameSubmitTypeName = match[9] # hiddenSubmitTypeName
+        fieldNameReportType = match[6] # selReportType
+        fieldNameReportPeriod = match[7] # selDateType
+        fieldNameDayOrWeekSelection = match[10] # hiddenDayOrWeekSelection
+        fieldNameSubmitTypeName = match[11] # hiddenSubmitTypeName
 
 
     # Ah...more fun.  We need to post the page with the form
@@ -269,7 +269,7 @@ def downloadFile(options):
         match = re.findall('name="frmVendorPage" action="(.*)"', html)
         urlDownload = urlBase % match[0]
         match = re.findall('name="(.*?)"', html)
-        fieldNameDayOrWeekDropdown = match[6]
+        fieldNameDayOrWeekDropdown = match[8]
 
     # Set the list of report dates.
     reportDates = []
