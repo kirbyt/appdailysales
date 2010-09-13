@@ -3,9 +3,9 @@
 # appdailysales.py
 #
 # iTune Connect Daily Sales Reports Downloader
-# Copyright 2008-2009 Kirby Turner
+# Copyright 2008-2010 Kirby Turner
 #
-# Version 1.10
+# Version 2.0
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -72,11 +72,6 @@ import os
 import gzip
 import StringIO
 import traceback
-
-try:
-    import BeautifulSoup
-except ImportError:
-    BeautifulSoup = None
 
 
 class ITCException(Exception):
@@ -206,7 +201,7 @@ def downloadFile(options):
     if options.verbose == True:
         print '-- begin script --'
 
-    urlBase = 'https://itts.apple.com%s'
+    urlITCBase = 'https://itunesconnect.apple.com%s'
 
     cj = MyCookieJar();
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
@@ -214,10 +209,10 @@ def downloadFile(options):
 
     # Go to the iTunes Connect website and retrieve the
     # form action for logging into the site.
-    urlWebsite = urlBase % '/cgi-bin/WebObjects/Piano.woa'
+    urlWebsite = urlITCBase % '/WebObjects/iTunesConnect.woa'
     html = readHtml(opener, urlWebsite)
     match = re.search('" action="(.*)"', html)
-    urlActionLogin = urlBase % match.group(1)
+    urlActionLogin = urlITCBase % match.group(1)
 
 
     # Login to iTunes Connect web site and go to the sales 
@@ -226,52 +221,52 @@ def downloadFile(options):
     # page that redirects to the static URL. Best guess here 
     # is that the server is setting some session variables 
     # or something.
-    webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password, '1.Continue.x':'0', '1.Continue.y':'0'})
+    webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password, '1.Continue':'0'})
     html = readHtml(opener, urlActionLogin, webFormLoginData)
 
 
+    # Click through to the Sales and Trends.
+    urlSalesAndTrends = urlITCBase % '/WebObjects/iTunesConnect.woa/wo/2.0.9.7.2.9.1.0.0.3'
+    html = readHtml(opener, urlSalesAndTrends)
+
+
+    # We're at the vendor default page. Might need additional work if your account
+    # has more than one vendor.
+
+
+    # Access the sales report page.
+    urlSalesReport = 'https://reportingitc.apple.com/sales.faces'
+    html = readHtml(opener, urlSalesReport)
+
+
     # Get the form field names needed to download the report.
-    if BeautifulSoup:
-        if options.verbose == True:
-            print 'using BeautifulSoap for HTML parsing'
-        soup = BeautifulSoup.BeautifulSoup( html )
-        form = soup.find( 'form', attrs={'name': 'frmVendorPage' } )
-        urlDownload = urlBase % form['action']
-        
-        fieldNameReportType = soup.find( 'select', attrs={'id': 'selReportType'} )['name']
-        fieldNameReportPeriod = soup.find( 'select', attrs={'id': 'selDateType'} )['name']
-        fieldNameDayOrWeekSelection = soup.find( 'input', attrs={'name': 'hiddenDayOrWeekSelection'} )['name'] #This is kinda redundant
-        fieldNameSubmitTypeName = soup.find( 'input', attrs={'name': 'hiddenSubmitTypeName'} )['name'] #This is kinda redundant, too
-    else:
-        match = re.findall('name="frmVendorPage" action="(.*)"', html)
-        urlDownload = urlBase % match[0]
-        match = re.findall('name="(.*?)"', html)
-        fieldNameReportType = match[6] # selReportType
-        fieldNameReportPeriod = match[7] # selDateType
-        fieldNameDayOrWeekSelection = match[10] # hiddenDayOrWeekSelection
-        fieldNameSubmitTypeName = match[11] # hiddenSubmitTypeName
+    match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
+    viewState = match[0]
+    match = re.findall('theForm:j_id_jsp_[0-9]*_21', html)
+    dailyName = match[0]
+    ajaxName = re.sub('._21', '_2', dailyName)
+    dateName = re.sub('._21', '_8', dailyName)
+    selectName = re.sub('._21', '_30', dailyName)
+
+    if options.verbose == True:
+        print 'viewState: ', viewState
+        print 'dailyName: ', dailyName
+        print 'ajaxName: ', ajaxName
+        print 'dateName: ', dateName
+        print 'selectName:', selectName
 
 
-    # Ah...more fun.  We need to post the page with the form
-    # fields collected so far.  This will give us the remaining
-    # form fields needed to get the download file.
-    webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekSelection:'Daily', fieldNameSubmitTypeName:'ShowDropDown'})
-    html = readHtml(opener, urlDownload, webFormSalesReportData)
+    # Click through from the dashboard to the sales page.
+    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'javax.faces.ViewState':viewState, dailyName:dailyName})
+    html = readHtml(opener, urlSalesReport, webFormSalesReportData)
+    match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
+    viewState = match[0]
 
-
-    if BeautifulSoup:
-        soup = BeautifulSoup.BeautifulSoup( html )
-        form = soup.find( 'form', attrs={'name': 'frmVendorPage' } )
-        urlDownload = urlBase % form['action']
-        select = soup.find( 'select', attrs={'id': 'dayorweekdropdown'} )
-        fieldNameDayOrWeekDropdown = select['name']
-    else:
-        match = re.findall('name="frmVendorPage" action="(.*)"', html)
-        urlDownload = urlBase % match[0]
-        match = re.findall('name="(.*?)"', html)
-        fieldNameDayOrWeekDropdown = match[8]
 
     # Set the list of report dates.
+    # A better approach is to grab the list of available dates
+    # from the web site instead of generating the dates. Will
+    # consider doing this in the future.
     reportDates = []
     if options.dateToDownload == None:
         for i in range(int(options.daysToDownload)):
@@ -284,13 +279,23 @@ def downloadFile(options):
     if options.verbose == True:
         print 'reportDates: ', reportDates
 
+
     unavailableCount = 0
     filenames = []
     for downloadReportDate in reportDates:
+        # Set the date within the web page.
+        webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':downloadReportDate, 'theForm:datePickerSourceSelectElementSales':downloadReportDate, 'theForm:weekPickerSourceSelectElement':'09/05/2010', 'javax.faces.ViewState':viewState, selectName:selectName})
+        html = readHtml(opener, urlSalesReport, webFormSalesReportData)
+        match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
+        viewState = match[0]
+
         # And finally...we're ready to download yesterday's sales report.
-        webFormSalesReportData = urllib.urlencode({fieldNameReportType:'Summary', fieldNameReportPeriod:'Daily', fieldNameDayOrWeekDropdown:downloadReportDate, 'download':'Download', fieldNameDayOrWeekSelection:downloadReportDate, fieldNameSubmitTypeName:'Download'})
-        urlHandle = opener.open(urlDownload, webFormSalesReportData)
+        webFormSalesReportData = urllib.urlencode({'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':downloadReportDate, 'theForm:datePickerSourceSelectElementSales':downloadReportDate, 'theForm:weekPickerSourceSelectElement':'09/05/2010', 'javax.faces.ViewState':viewState, 'theForm:downloadLabel2':'theForm:downloadLabel2'})
+        request = urllib2.Request(urlSalesReport, webFormSalesReportData)
+        urlHandle = opener.open(request)
         try:
+            if options.verbose == True:
+                print urlHandle.info()
             filename = urlHandle.info().getheader('content-disposition').split('=')[1]
             filebuffer = urlHandle.read()
             urlHandle.close()
