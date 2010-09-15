@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.0
+# Version 2.0.1
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -240,13 +240,21 @@ def downloadFile(options):
 
 
     # Get the form field names needed to download the report.
-    match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
-    viewState = match[0]
-    match = re.findall('theForm:j_id_jsp_[0-9]*_21', html)
-    dailyName = match[0]
-    ajaxName = re.sub('._21', '_2', dailyName)
-    dateName = re.sub('._21', '_8', dailyName)
-    selectName = re.sub('._21', '_30', dailyName)
+    try:
+        match = re.findall('"javax.faces.ViewState" value1="(.*?)"', html)
+        viewState = match[0]
+        match = re.findall('theForm:j_id_jsp_[0-9]*_21', html)
+        dailyName = match[0]
+        ajaxName = re.sub('._21', '_2', dailyName)
+        dateName = re.sub('._21', '_8', dailyName)
+        selectName = re.sub('._21', '_30', dailyName)
+    except:
+        if options.verbose == True:
+            print 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting and unsigned contracts. Try again later or sign into iTunes Connect and verify access.'
+            raise
+        else:
+            raise ITCException, 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting and unsigned contracts. Try again later or sign into iTunes Connect and verify access.'
+
 
     if options.verbose == True:
         print 'viewState: ', viewState
