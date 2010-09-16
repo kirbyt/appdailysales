@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.0.2
+# Version 2.1
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -72,6 +72,7 @@ import os
 import gzip
 import StringIO
 import traceback
+import getpass
 
 
 class ITCException(Exception):
@@ -154,7 +155,7 @@ def processCmdArgs():
         elif o in ('-p', '--password'):
             password = a
         elif o in ('-P', '--passwordStdin'):
-            password = sys.stdin.read()
+            password = getpass.getpass()
         elif o in ('-o', '--outputDirectory'):
             outputDirectory = a
         elif o in ('-u', '--unzip'):
