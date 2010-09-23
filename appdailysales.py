@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.1
+# Version 2.2
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -204,8 +204,10 @@ def readHtml(opener, url, data=None, options=None):
     urlHandle = opener.open(request)
     html = urlHandle.read()
     if options and options.verbose:
-        with open(os.path.join(options.outputDirectory, 'temp.html'), 'w') as f:
-            f.write(html) 
+        f = open(os.path.join(options.outputDirectory, 'temp.html'), 'w')
+        try:
+            f.write(html)
+        finally:
             f.close()
     return html
 
