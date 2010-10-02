@@ -301,6 +301,12 @@ def downloadFile(options):
         ajaxName = re.sub('._6', '_2', dailyName)
         dateName = re.sub('._6', '_8', dailyName)
         selectName = re.sub('._6', '_32', dailyName)
+        if options.verbose == True:
+            print 'viewState: ', viewState
+            print 'dailyName: ', dailyName
+            print 'ajaxName: ', ajaxName
+            print 'dateName: ', dateName
+            print 'selectName:', selectName
     except:
         errMessage = 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting, unsigned contracts, and change to the web site breaking this script. Try again later or sign into iTunes Connect and verify access.'
         if options.verbose == True:
@@ -310,16 +316,26 @@ def downloadFile(options):
             raise ITCException, errMessage
 
 
-    if options.verbose == True:
-        print 'viewState: ', viewState
-        print 'dailyName: ', dailyName
-        print 'ajaxName: ', ajaxName
-        print 'dateName: ', dateName
-        print 'selectName:', selectName
+    # Get the list of available dates.
+    try:
+        # Note the (?s) is an inline re.DOTALL, makes . match new lines.
+        match = re.findall('(?s)<div class="pickList">(.*?)</div>', html)
+        dateListAvailableDays = re.findall('<option value="(.*?)"', match[0])
+        dateListAvailableWeeks = re.findall('<option value="(.*?)"', match[1])
+        if options.verbose == True:
+            print 'dateListAvailableDays: ', dateListAvailableDays
+            print 'dateListAvailableWeeks: ', dateListAvailableWeeks
+    except:
+        errMessage = 'Unable to retrieve the list of available dates.'
+        if options.verbose == True:
+            print errMessage
+            raise
+        else:
+            raise ITCException, errMessage
 
 
     # Click through from the dashboard to the sales page.
-    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':'09/30/2010', 'theForm:weekPickerSourceSelectElement':'09/26/2010', 'javax.faces.ViewState':viewState, dailyName:dailyName})
+    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateListAvailableDays[0], 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, dailyName:dailyName})
     html = readHtml(opener, urlSalesReport, webFormSalesReportData, options=options)
     match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
     viewState = match[0]
@@ -341,56 +357,63 @@ def downloadFile(options):
         print 'reportDates: ', reportDates
 
 
+    ####
     unavailableCount = 0
     filenames = []
     for downloadReportDate in reportDates:
         # Set the date within the web page.
         dateString = downloadReportDate.strftime('%m/%d/%Y')
-        if options.verbose == True:
-            print 'Downloading report for: ', dateString
-        webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':'09/26/2010', 'javax.faces.ViewState':viewState, selectName:selectName})
-        html = readHtml(opener, urlSalesReport, webFormSalesReportData)
-        match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
-        viewState = match[0]
-
-        # And finally...we're ready to download yesterday's sales report.
-        webFormSalesReportData = urllib.urlencode({'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':'09/05/2010', 'javax.faces.ViewState':viewState, 'theForm:downloadLabel2':'theForm:downloadLabel2'})
-        request = urllib2.Request(urlSalesReport, webFormSalesReportData)
-        urlHandle = opener.open(request)
-        try:
+        
+        if dateString in dateListAvailableDays:
             if options.verbose == True:
-                print urlHandle.info()
-            if (options.outputFormat):
-                filename = downloadReportDate.strftime(options.outputFormat)
-            else:
-                filename = urlHandle.info().getheader('content-disposition').split('=')[1]
+                print 'Downloading report for: ', dateString
+            webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, selectName:selectName})
+            html = readHtml(opener, urlSalesReport, webFormSalesReportData)
+            match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
+            viewState = match[0]
 
-            filebuffer = urlHandle.read()
-            urlHandle.close()
-
-            if options.unzipFile == True:
+            # And finally...we're ready to download yesterday's sales report.
+            webFormSalesReportData = urllib.urlencode({'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, 'theForm:downloadLabel2':'theForm:downloadLabel2'})
+            request = urllib2.Request(urlSalesReport, webFormSalesReportData)
+            urlHandle = opener.open(request)
+            try:
                 if options.verbose == True:
-                    print 'unzipping archive file: ', filename
-                #Use GzipFile to de-gzip the data
-                ioBuffer = StringIO.StringIO( filebuffer )
-                gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
-                filebuffer = gzipIO.read()
+                    print urlHandle.info()
+                if (options.outputFormat):
+                    filename = downloadReportDate.strftime(options.outputFormat)
+                else:
+                    filename = urlHandle.info().getheader('content-disposition').split('=')[1]
 
-            filename = os.path.join(options.outputDirectory, filename)
-            if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
-                filename = os.path.splitext( filename )[0]
+                filebuffer = urlHandle.read()
+                urlHandle.close()
 
-            if options.verbose == True:
-                print 'saving download file:', filename
+                if options.unzipFile == True:
+                    if options.verbose == True:
+                        print 'unzipping archive file: ', filename
+                    #Use GzipFile to de-gzip the data
+                    ioBuffer = StringIO.StringIO( filebuffer )
+                    gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
+                    filebuffer = gzipIO.read()
 
-            downloadFile = open(filename, 'w')
-            downloadFile.write(filebuffer)
-            downloadFile.close()
+                filename = os.path.join(options.outputDirectory, filename)
+                if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
+                    filename = os.path.splitext( filename )[0]
 
-            filenames.append( filename )
-        except AttributeError:
-            print '%s report is not available - try again later.' % downloadReportDate
-            unavailableCount += 1
+                if options.verbose == True:
+                    print 'saving download file:', filename
+
+                downloadFile = open(filename, 'w')
+                downloadFile.write(filebuffer)
+                downloadFile.close()
+
+                filenames.append( filename )
+            except AttributeError:
+                print '%s report is not available - try again later.' % downloadReportDate
+                unavailableCount += 1
+        else:
+            print 'Report not available for: ', dateString
+    # End for downloadReportDate in reportDates:
+    ####
 
     if unavailableCount > 0:
         raise ITCException, '%i report(s) not available - try again later' % unavailableCount
