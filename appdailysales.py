@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.3
+# Version 2.4
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -263,10 +263,29 @@ def downloadFile(options):
     
     html = readHtml(opener, urlSalesAndTrends, options=options)
 
-
     # We're at the vendor default page. Might need additional work if your account
     # has more than one vendor.
+    try:
+        match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
+        viewState = match[0]
+        match = re.findall('script id="defaultVendorPage:(.*?)"', html)
+        defaultVendorPage = match[0]
+        ajaxName = re.sub('_2', '_0', defaultVendorPage)
+        if options.verbose == True:
+            print 'viewState: ', viewState
+            print 'defaultVendorPage: ', defaultVendorPage
+            print 'ajaxName: ', ajaxName
+    except:
+        errMessage = 'Unable to find default vendor page.'
+        if options.verbose == True:
+            print errMessage
+            raise
+        else:
+            raise ITCException, errMessage
 
+    urlDefaultVendorPage = 'https://reportingitc.apple.com/vendor_default.faces'
+    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'javax.faces.ViewState':viewState, 'defaultVendorPage':defaultVendorPage, 'defaultVendorPage:'+defaultVendorPage:'defaultVendorPage:'+defaultVendorPage})
+    html = readHtml(opener, urlDefaultVendorPage, webFormSalesReportData, options=options)
 
     # Access the sales report page.
     urlSalesReport = 'https://reportingitc.apple.com/sales.faces'
@@ -277,17 +296,18 @@ def downloadFile(options):
     try:
         match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
         viewState = match[0]
-        match = re.findall('theForm:j_id_jsp_[0-9]*_21', html)
+        match = re.findall('theForm:j_id_jsp_[0-9]*_6', html)
         dailyName = match[0]
-        ajaxName = re.sub('._21', '_2', dailyName)
-        dateName = re.sub('._21', '_8', dailyName)
-        selectName = re.sub('._21', '_30', dailyName)
+        ajaxName = re.sub('._6', '_2', dailyName)
+        dateName = re.sub('._6', '_8', dailyName)
+        selectName = re.sub('._6', '_32', dailyName)
     except:
+        errMessage = 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting, unsigned contracts, and change to the web site breaking this script. Try again later or sign into iTunes Connect and verify access.'
         if options.verbose == True:
-            print 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting and unsigned contracts. Try again later or sign into iTunes Connect and verify access.'
+            print errMessage
             raise
         else:
-            raise ITCException, 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting and unsigned contracts. Try again later or sign into iTunes Connect and verify access.'
+            raise ITCException, errMessage
 
 
     if options.verbose == True:
@@ -299,7 +319,7 @@ def downloadFile(options):
 
 
     # Click through from the dashboard to the sales page.
-    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'javax.faces.ViewState':viewState, dailyName:dailyName})
+    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':'09/30/2010', 'theForm:weekPickerSourceSelectElement':'09/26/2010', 'javax.faces.ViewState':viewState, dailyName:dailyName})
     html = readHtml(opener, urlSalesReport, webFormSalesReportData, options=options)
     match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
     viewState = match[0]
@@ -328,13 +348,13 @@ def downloadFile(options):
         dateString = downloadReportDate.strftime('%m/%d/%Y')
         if options.verbose == True:
             print 'Downloading report for: ', dateString
-        webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':'09/05/2010', 'javax.faces.ViewState':viewState, selectName:selectName})
+        webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':'09/26/2010', 'javax.faces.ViewState':viewState, selectName:selectName})
         html = readHtml(opener, urlSalesReport, webFormSalesReportData)
         match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
         viewState = match[0]
 
         # And finally...we're ready to download yesterday's sales report.
-        webFormSalesReportData = urllib.urlencode({'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':'09/05/2010', 'javax.faces.ViewState':viewState, 'theForm:downloadLabel2':'theForm:downloadLabel2'})
+        webFormSalesReportData = urllib.urlencode({'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':'09/05/2010', 'javax.faces.ViewState':viewState, 'theForm:downloadLabel2':'theForm:downloadLabel2'})
         request = urllib2.Request(urlSalesReport, webFormSalesReportData)
         urlHandle = opener.open(request)
         try:
