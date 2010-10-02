@@ -60,6 +60,7 @@ verbose = False
 daysToDownload = 1
 dateToDownload = None
 outputFormat = None
+debug = False
 # ----------------------------------------------------
 
 
@@ -93,6 +94,9 @@ class ITCException(Exception):
 #   unzipFile
 #   verbose
 #   daysToDownload
+#   dateToDownload
+#   outputFormat
+#   debug
 # Note that the class attributes will default to the global
 # variable value equivalent.
 class ReportOptions:
@@ -113,6 +117,8 @@ class ReportOptions:
             return dateToDownload
         elif attrname == 'outputFormat':
             return outputFormat
+        elif attrname == 'debug':
+            return debug
         else:
             raise AttributeError, attrname
 
@@ -129,7 +135,8 @@ Options and arguments:
 -u     : unzip download file, default is off (also --unzip)
 -d num : number of days to download, default is 1 (also --days)
 -D mm/dd/yyyy : report date to download, -d option is ignored when -D is used (also --date)
--f format : output file name format (see strftime; also --format)''' % sys.argv[0]
+-f format : output file name format (see strftime; also --format)
+--debug : debug output, default is off''' % sys.argv[0]
 
 
 def processCmdArgs():
@@ -141,11 +148,12 @@ def processCmdArgs():
     global daysToDownload
     global dateToDownload
     global outputFormat
+    global debug
 
     # Check for command line options. The command line options
     # override the globals set above if present.
     try: 
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format='])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'debug'])
     except getopt.GetoptError, err:
         #print help information and exit
         print str(err)  # will print something like "option -x not recongized"
@@ -174,6 +182,9 @@ def processCmdArgs():
             dateToDownload = a
         elif o in ('-f', '--format'):
             outputFormat = a
+        elif o in ('--debug'):
+            debug = True
+            verbose = True # Turn on verbose if debug option is on.
         else:
             assert False, 'unhandled option'
 
@@ -203,7 +214,7 @@ def readHtml(opener, url, data=None, options=None):
     request = urllib2.Request(url, data)
     urlHandle = opener.open(request)
     html = urlHandle.read()
-    if options and options.verbose:
+    if options and options.debug:
         f = open(os.path.join(options.outputDirectory, 'temp.html'), 'w')
         try:
             f.write(html)
@@ -224,6 +235,8 @@ def downloadFile(options):
     cj = MyCookieJar();
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
 
+    if options.verbose == True:
+        print 'Signing into iTunes Connect web site.'
 
     # Go to the iTunes Connect website and retrieve the
     # form action for logging into the site.
@@ -245,6 +258,9 @@ def downloadFile(options):
         raise ITCException, 'User or password incorrect.'
 
     # Find the Sales and Trends URL.
+    if options.verbose == True:
+        print 'Accessing Sales and Trends reporting web site.'
+    
     try:
         match = re.findall('/WebObjects/iTunesConnect.woa/wo/(.*?).0.9.7.2.9.1.0.0.3', html)
         backtrackedId = match[0]
@@ -258,9 +274,9 @@ def downloadFile(options):
     # Click through to the Sales and Trends.
     salesAndTrendsPath = '/WebObjects/iTunesConnect.woa/wo/%s.0.9.7.2.9.1.0.0.3'
     urlSalesAndTrends = urlITCBase % salesAndTrendsPath % backtrackedId
-    if options.verbose == True:
+    if options.debug == True:
         print 'Sales and Trends URL: ', urlSalesAndTrends
-    
+
     html = readHtml(opener, urlSalesAndTrends, options=options)
 
     # We're at the vendor default page. Might need additional work if your account
@@ -271,7 +287,7 @@ def downloadFile(options):
         match = re.findall('script id="defaultVendorPage:(.*?)"', html)
         defaultVendorPage = match[0]
         ajaxName = re.sub('_2', '_0', defaultVendorPage)
-        if options.verbose == True:
+        if options.debug == True:
             print 'viewState: ', viewState
             print 'defaultVendorPage: ', defaultVendorPage
             print 'ajaxName: ', ajaxName
@@ -288,6 +304,8 @@ def downloadFile(options):
     html = readHtml(opener, urlDefaultVendorPage, webFormSalesReportData, options=options)
 
     # Access the sales report page.
+    if options.verbose == True:
+        print 'Accessing sales report web page.'
     urlSalesReport = 'https://reportingitc.apple.com/sales.faces'
     html = readHtml(opener, urlSalesReport, options=options)
 
@@ -301,7 +319,7 @@ def downloadFile(options):
         ajaxName = re.sub('._6', '_2', dailyName)
         dateName = re.sub('._6', '_8', dailyName)
         selectName = re.sub('._6', '_32', dailyName)
-        if options.verbose == True:
+        if options.debug == True:
             print 'viewState: ', viewState
             print 'dailyName: ', dailyName
             print 'ajaxName: ', ajaxName
@@ -322,7 +340,7 @@ def downloadFile(options):
         match = re.findall('(?s)<div class="pickList">(.*?)</div>', html)
         dateListAvailableDays = re.findall('<option value="(.*?)"', match[0])
         dateListAvailableWeeks = re.findall('<option value="(.*?)"', match[1])
-        if options.verbose == True:
+        if options.debug == True:
             print 'dateListAvailableDays: ', dateListAvailableDays
             print 'dateListAvailableWeeks: ', dateListAvailableWeeks
     except:
@@ -353,11 +371,13 @@ def downloadFile(options):
     else:
         reportDates = [datetime.datetime.strptime(options.dateToDownload, '%m/%d/%Y').date()]
 
-    if options.verbose == True:
+    if options.debug == True:
         print 'reportDates: ', reportDates
 
 
     ####
+    if options.verbose == True:
+        print 'Downloading daily sales reports.'
     unavailableCount = 0
     filenames = []
     for downloadReportDate in reportDates:
@@ -377,7 +397,7 @@ def downloadFile(options):
             request = urllib2.Request(urlSalesReport, webFormSalesReportData)
             urlHandle = opener.open(request)
             try:
-                if options.verbose == True:
+                if options.debug == True:
                     print urlHandle.info()
                 if (options.outputFormat):
                     filename = downloadReportDate.strftime(options.outputFormat)
@@ -389,7 +409,7 @@ def downloadFile(options):
 
                 if options.unzipFile == True:
                     if options.verbose == True:
-                        print 'unzipping archive file: ', filename
+                        print 'Unzipping archive file: ', filename
                     #Use GzipFile to de-gzip the data
                     ioBuffer = StringIO.StringIO( filebuffer )
                     gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
@@ -400,7 +420,7 @@ def downloadFile(options):
                     filename = os.path.splitext( filename )[0]
 
                 if options.verbose == True:
-                    print 'saving download file:', filename
+                    print 'Saving download file:', filename
 
                 downloadFile = open(filename, 'w')
                 downloadFile.write(filebuffer)
@@ -408,18 +428,20 @@ def downloadFile(options):
 
                 filenames.append( filename )
             except AttributeError:
-                print '%s report is not available - try again later.' % downloadReportDate
+                print '%s report is not available - try again later.' % dateString
                 unavailableCount += 1
         else:
-            print 'Report not available for: ', dateString
+            print '%s report is not available - try again later.' % dateString
+            unavailableCount += 1
     # End for downloadReportDate in reportDates:
     ####
 
     if unavailableCount > 0:
         raise ITCException, '%i report(s) not available - try again later' % unavailableCount
 
-    if options.verbose == True:
+    if options.debug == True:
         os.remove(os.path.join(options.outputDirectory, "temp.html"))
+    if options.verbose == True:
         print '-- end of script --'
 
     return filenames
@@ -439,6 +461,8 @@ def main():
     options.daysToDownload = daysToDownload
     options.dateToDownload = dateToDownload
     options.outputFormat = outputFormat
+    options.debug = debug
+    
     # Download the file.
     try:
         downloadFile(options)
