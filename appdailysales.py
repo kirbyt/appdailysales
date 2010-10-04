@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.4
+# Version 2.5
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -302,6 +302,21 @@ def downloadFile(options):
     urlDefaultVendorPage = 'https://reportingitc.apple.com/vendor_default.faces'
     webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'javax.faces.ViewState':viewState, 'defaultVendorPage':defaultVendorPage, 'defaultVendorPage:'+defaultVendorPage:'defaultVendorPage:'+defaultVendorPage})
     html = readHtml(opener, urlDefaultVendorPage, webFormSalesReportData, options=options)
+
+    # Check for notification messages.
+    urlDashboard = 'https://reportingitc.apple.com/subdashboard.faces'
+    html = readHtml(opener, urlDashboard, options=options)
+    try:
+        # Note the (?s) is an inline re.DOTALL, makes . match new lines.
+        match = re.findall('(?s)<div class="notification">(.*?)</span>', html)
+        notificationDiv = match[0]
+        match = re.findall('(?s)<td>(.*?)</td>', notificationDiv)
+        notificationMessage = match[0]
+        if options.verbose == True:
+            print notificationMessage
+    except:
+        pass # Do nothing. We're just checking for notifications.
+
 
     # Access the sales report page.
     if options.verbose == True:
