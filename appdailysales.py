@@ -233,6 +233,7 @@ def downloadFile(options):
     urlITCBase = 'https://itunesconnect.apple.com%s'
 
     cj = MyCookieJar();
+    cj.set_policy(cookielib.DefaultCookiePolicy(rfc2965=True))
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
 
     if options.verbose == True:
