@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.5
+# Version 2.6
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -261,22 +261,7 @@ def downloadFile(options):
     if options.verbose == True:
         print 'Accessing Sales and Trends reporting web site.'
     
-    try:
-        match = re.findall('/WebObjects/iTunesConnect.woa/wo/(.*?).0.9.7.2.9.1.0.0.3', html)
-        backtrackedId = match[0]
-    except:
-        if options.verbose == True:
-            print 'Unable to find the Sales and Trends URL.'
-            raise
-        else:
-            raise ITCException, 'Unable to find the Sales and Trends URL.'
-    
-    # Click through to the Sales and Trends.
-    salesAndTrendsPath = '/WebObjects/iTunesConnect.woa/wo/%s.0.9.7.2.9.1.0.0.3'
-    urlSalesAndTrends = urlITCBase % salesAndTrendsPath % backtrackedId
-    if options.debug == True:
-        print 'Sales and Trends URL: ', urlSalesAndTrends
-
+    urlSalesAndTrends = 'https://reportingitc.apple.com/'
     html = readHtml(opener, urlSalesAndTrends, options=options)
 
     # We're at the vendor default page. Might need additional work if your account
