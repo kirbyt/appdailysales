@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2010 Kirby Turner
 #
-# Version 2.6
+# Version 2.7
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -262,29 +262,42 @@ def downloadFile(options):
     if options.verbose == True:
         print 'Accessing Sales and Trends reporting web site.'
     
-    urlSalesAndTrends = 'https://reportingitc.apple.com/'
-    html = readHtml(opener, urlSalesAndTrends, options=options)
+    # Sometimes the vendor default page does not load right away.
+    # This causes the script to fail, so as a work around, the
+    # script will attempt to load the page 3 times before abend.
+    vendorDefaultPageAttempts = 3
+    while vendorDefaultPageAttempts > 0:
+        vendorDefaultPageAttempts = vendorDefaultPageAttempts - 1
+        urlSalesAndTrends = 'https://reportingitc.apple.com/'
+        html = readHtml(opener, urlSalesAndTrends, options=options)
 
-    # We're at the vendor default page. Might need additional work if your account
-    # has more than one vendor.
-    try:
-        match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
-        viewState = match[0]
-        match = re.findall('script id="defaultVendorPage:(.*?)"', html)
-        defaultVendorPage = match[0]
-        ajaxName = re.sub('_2', '_0', defaultVendorPage)
-        if options.debug == True:
-            print 'viewState: ', viewState
-            print 'defaultVendorPage: ', defaultVendorPage
-            print 'ajaxName: ', ajaxName
-    except:
-        errMessage = 'Unable to find default vendor page.'
-        if options.verbose == True:
-            print errMessage
-            raise
-        else:
-            raise ITCException, errMessage
+        # We're at the vendor default page. Might need additional work if your account
+        # has more than one vendor.
+        try:
+            match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
+            viewState = match[0]
+            match = re.findall('script id="defaultVendorPage:(.*?)"', html)
+            defaultVendorPage = match[0]
+            ajaxName = re.sub('_2', '_0', defaultVendorPage)
+            if options.debug == True:
+                print 'viewState: ', viewState
+                print 'defaultVendorPage: ', defaultVendorPage
+                print 'ajaxName: ', ajaxName
+            vendorDefaultPageAttempts = 0 # exit loop
+        except:
+            if vendorDefaultPageAttempts < 1:
+                errMessage = 'Unable to load default vendor page.'
+                if options.verbose == True:
+                    print errMessage
+                    raise
+                else:
+                    raise ITCException, errMessage
 
+    # This may seem confusing because we just accessed the vendor default page in the 
+    # code above. However, the vendor default page as a piece of javascript that runs
+    # once the page is loaded in the browser. The javascript does a resubmit. My guess
+    # is this action is needed to set the default vendor on the server-side. Regardless
+    # we must call the page again but no parsing of the HTML is needed this time around.
     urlDefaultVendorPage = 'https://reportingitc.apple.com/vendor_default.faces'
     webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'javax.faces.ViewState':viewState, 'defaultVendorPage':defaultVendorPage, 'defaultVendorPage:'+defaultVendorPage:'defaultVendorPage:'+defaultVendorPage})
     html = readHtml(opener, urlDefaultVendorPage, webFormSalesReportData, options=options)
