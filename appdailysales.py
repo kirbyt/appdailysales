@@ -413,10 +413,15 @@ def downloadFile(options):
             try:
                 if options.debug == True:
                     print urlHandle.info()
+                    
+                # Check for the content-disposition. If present then we know we have a 
+                # file to download. If not present then an AttributeError exception is
+                # thrown and we assume the file is not available for download.
+                filename = urlHandle.info().getheader('content-disposition').split('=')[1]
+                # Check for an override of the file name. If found then change the file
+                # name to match the outputFormat.
                 if (options.outputFormat):
                     filename = downloadReportDate.strftime(options.outputFormat)
-                else:
-                    filename = urlHandle.info().getheader('content-disposition').split('=')[1]
 
                 filebuffer = urlHandle.read()
                 urlHandle.close()
