@@ -74,7 +74,7 @@ By default, the report file is compressed. When using the -f option, be sure to 
 
 ## What Version of Python
 
-The script was written for and has been tested with *Python version 2.5.x and 2.6.x*. It is doubtful the script will work with Python 3.x without some tweaking.
+The script was written for and has been tested with **Python version 2.5.x, 2.6.x, and 2.7.x**. It is doubtful the script will work with Python 3.x without some tweaking.
 
 ## Debugging the Script
 
@@ -82,19 +82,24 @@ Version 2.4 introduces the new --debug flag. This flag will display additional v
 
 # Change History
 
+**Version 2.8**
+
+  * Updated the script to support the latest iTC changes.
+  * Move source code repository to github. (https://github.com/kirbyt/appdailysales)
+
 **Version 2.7**
 
-* Modified the script to make multiple attempts at loading the vendor default page before reporting an error.
-* Changed how content-disposition is checked to avoid attempts of unzipping HTML.
+  * Modified the script to make multiple attempts at loading the vendor default page before reporting an error.
+  * Changed how content-disposition is checked to avoid attempts of unzipping HTML.
 
 **Version 2.6**
   
-* Updated the script to support the new URL to the Sales and Trends web site. (Thanks ferenc.vehmann)
-* Enabled RFC2965 cookie support. (Thanks troegenator)
+  * Updated the script to support the new URL to the Sales and Trends web site. (Thanks ferenc.vehmann)
+  * Enabled RFC2965 cookie support. (Thanks troegenator)
 
 **Version 2.5**
 
-* Updated to display notification messages, if any, from Apple displayed on the sales and trends dashboard. Must use the -v or --verbose flag to see the notification message.
+  * Updated to display notification messages, if any, from Apple displayed on the sales and trends dashboard. Must use the -v or --verbose flag to see the notification message.
 
 **Version 2.4**
 
