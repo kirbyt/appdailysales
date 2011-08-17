@@ -3,9 +3,9 @@
 # appdailysales.py
 #
 # iTune Connect Daily Sales Reports Downloader
-# Copyright 2008-2010 Kirby Turner
+# Copyright 2008-2011 Kirby Turner
 #
-# Version 2.7
+# Version 2.8
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -367,7 +367,7 @@ def downloadFile(options):
 
 
     # Click through from the dashboard to the sales page.
-    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateListAvailableDays[0], 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, dailyName:dailyName})
+    webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateListAvailableDays[0], 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, dailyName:dailyName, 'theForm:optInVar':'A',  'theForm:dateType':'D', 'theForm:optInVarRender':'false', 'theForm:wklyBool':'false'})
     html = readHtml(opener, urlSalesReport, webFormSalesReportData, options=options)
     match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
     viewState = match[0]
