@@ -10,9 +10,8 @@ AppDailySales can be used as a stand-alone program or as part of another script.
 
 Download the script appdailysales.py and run the command line:
 
-* **python appdailysales.py**
+**python appdailysales.py**
 
-`
     usage: appdailysales.py [options]
     Options and arguments:
     -h     : print this help message and exit (also --help)
@@ -25,8 +24,7 @@ Download the script appdailysales.py and run the command line:
     -d num : number of days to download, default is 1 (also --days)
     -D mm/dd/yyyy : report date to download, -d option is ignored when -D is used (also --date)
     -f format : output file name format (see strftime; also --format)
-    -- debug : debug output, default is off
-`
+    --debug : debug output, default is off
 
 You can also change the option variables located towards the top of the script file if you prefer to not use the command line options. However, this approach is not recommended with version 1.2 and greater of the script file.
 
