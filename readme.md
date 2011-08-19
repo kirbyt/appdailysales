@@ -205,7 +205,7 @@ Special thanks goes out to the following individuals for contributing to this pr
   * Maarten Billemont
   * Daniel Dickison
   * Mike Kasprzak
-  * stakemura
+  * Shintaro TAKEMURA
 
 # Code License
 

@@ -30,7 +30,7 @@
 #   Maarten Billemont
 #   Daniel Dickison
 #   Mike Kasprzak
-#   stakemura
+#   Shintaro TAKEMURA
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
