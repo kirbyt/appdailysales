@@ -24,6 +24,7 @@ Download the script appdailysales.py and run the command line:
     -d num : number of days to download, default is 1 (also --days)
     -D mm/dd/yyyy : report date to download, -d option is ignored when -D is used (also --date)
     -f format : output file name format (see strftime; also --format)
+	-n      : used with -f, skips downloading of report files that already exist (also --noOverWriteFiles)
     --debug : debug output, default is off
 
 You can also change the option variables located towards the top of the script file if you prefer to not use the command line options. However, this approach is not recommended with version 1.2 and greater of the script file.
@@ -79,6 +80,11 @@ The script was written for and has been tested with **Python version 2.5.x, 2.6.
 Version 2.4 introduces the new --debug flag. This flag will display additional verbose output for debugging and troubleshooting the script. Also, when this flag is turned on and the script encounters a screen scraping error, a file named temp.html is created and stored in the output directory. This file contains the HTML downloaded in the last web request.
 
 # Change History
+
+**Version 2.9**
+
+  * Automatically creates nested directories added to format (-f) strings (eg. -f %Y/%Y-%m/Daily-%Y-%m-%d.txt).  Works with outputDirectory (-o). (Thanks Mike Kasprzak)
+  * New command line option "-n". Used with format (-f), any file that already exists isn't downloaded. (Thanks Mike Kasprzak)
 
 **Version 2.8**
 
@@ -196,6 +202,7 @@ Special thanks goes out to the following individuals for contributing to this pr
   * Andrew de los Reyes
   * Maarten Billemont
   * Daniel Dickison
+  * Mike Kasprzak
 
 # Code License
 
