@@ -30,6 +30,7 @@
 #   Maarten Billemont
 #   Daniel Dickison
 #   Mike Kasprzak
+#   stakemura
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -62,6 +63,7 @@ daysToDownload = 1
 dateToDownload = None
 outputFormat = None
 overWriteFiles = True
+proxy = ''
 debug = False
 # ----------------------------------------------------
 
@@ -122,6 +124,8 @@ class ReportOptions:
             return outputFormat
         elif attrname == 'overWriteFiles':
             return overWriteFiles
+        elif attrname == 'proxy':
+            return proxy
         elif attrname == 'debug':
             return debug
         else:
@@ -142,6 +146,7 @@ Options and arguments:
 -D mm/dd/yyyy : report date to download, -d option is ignored when -D is used (also --date)
 -f format : output file name format (see strftime; also --format)
 -n      : used with -f, skips downloading of report files that already exist (also --noOverWriteFiles)
+--proxy : URL of the proxy
 --debug : debug output, default is off''' % sys.argv[0]
 
 
@@ -155,12 +160,13 @@ def processCmdArgs():
     global dateToDownload
     global outputFormat
     global overWriteFiles
+    global proxy
     global debug
 
     # Check for command line options. The command line options
     # override the globals set above if present.
     try: 
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:n', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'noOverWriteFiles', 'debug'])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:n', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'noOverWriteFiles', 'proxy=', 'debug'])
     except getopt.GetoptError, err:
         #print help information and exit
         print str(err)  # will print something like "option -x not recongized"
@@ -191,6 +197,8 @@ def processCmdArgs():
             outputFormat = a
         elif o in ('-n', '--noOverWriteFiles'):
             overWriteFiles = False
+        elif o in ('-o', '--proxy'):
+            proxy = a
         elif o in ('--debug'):
             debug = True
             verbose = True # Turn on verbose if debug option is on.
@@ -241,9 +249,15 @@ def downloadFile(options):
 
     urlITCBase = 'https://itunesconnect.apple.com%s'
 
+    handlers = []                      # proxy support
+    if options.proxy:                  # proxy support
+        handlers.append(urllib2.ProxyHandler({"https": options.proxy}))      # proxy support
+
     cj = MyCookieJar();
     cj.set_policy(cookielib.DefaultCookiePolicy(rfc2965=True))
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+    cjhdr = urllib2.HTTPCookieProcessor(cj)
+    handlers.append(cjhdr)             # proxy support
+    opener = urllib2.build_opener(*handlers)        # proxy support
 
     if options.verbose == True:
         print 'Signing into iTunes Connect web site.'
@@ -511,6 +525,7 @@ def main():
     options.dateToDownload = dateToDownload
     options.outputFormat = outputFormat
     options.overWriteFiles = overWriteFiles
+    options.proxy = proxy
     options.debug = debug
     
     # Download the file.
