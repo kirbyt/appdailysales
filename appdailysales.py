@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2011 Kirby Turner
 #
-# Version 2.8
+# Version 2.9
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -29,6 +29,7 @@
 #   Andrew de los Reyes
 #   Maarten Billemont
 #   Daniel Dickison
+#   Mike Kasprzak
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -60,6 +61,7 @@ verbose = False
 daysToDownload = 1
 dateToDownload = None
 outputFormat = None
+overWriteFiles = True
 debug = False
 # ----------------------------------------------------
 
@@ -96,6 +98,7 @@ class ITCException(Exception):
 #   daysToDownload
 #   dateToDownload
 #   outputFormat
+#   overWriteFiles
 #   debug
 # Note that the class attributes will default to the global
 # variable value equivalent.
@@ -117,6 +120,8 @@ class ReportOptions:
             return dateToDownload
         elif attrname == 'outputFormat':
             return outputFormat
+        elif attrname == 'overWriteFiles':
+            return overWriteFiles
         elif attrname == 'debug':
             return debug
         else:
@@ -136,6 +141,7 @@ Options and arguments:
 -d num : number of days to download, default is 1 (also --days)
 -D mm/dd/yyyy : report date to download, -d option is ignored when -D is used (also --date)
 -f format : output file name format (see strftime; also --format)
+-n      : used with -f, skips downloading of report files that already exist (also --noOverWriteFiles)
 --debug : debug output, default is off''' % sys.argv[0]
 
 
@@ -148,12 +154,13 @@ def processCmdArgs():
     global daysToDownload
     global dateToDownload
     global outputFormat
+    global overWriteFiles
     global debug
 
     # Check for command line options. The command line options
     # override the globals set above if present.
     try: 
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'debug'])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:n', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'noOverWriteFiles', 'debug'])
     except getopt.GetoptError, err:
         #print help information and exit
         print str(err)  # will print something like "option -x not recongized"
@@ -182,6 +189,8 @@ def processCmdArgs():
             dateToDownload = a
         elif o in ('-f', '--format'):
             outputFormat = a
+        elif o in ('-n', '--noOverWriteFiles'):
+            overWriteFiles = False
         elif o in ('--debug'):
             debug = True
             verbose = True # Turn on verbose if debug option is on.
@@ -399,6 +408,19 @@ def downloadFile(options):
         dateString = downloadReportDate.strftime('%m/%d/%Y')
         
         if dateString in dateListAvailableDays:
+            # If told not to overwrite files, check before downloading
+            if (options.overWriteFiles == False):
+                # Only if custom formatting was enabled, we can check if file exists before downloading
+                if (options.outputFormat):
+                    filename = downloadReportDate.strftime(options.outputFormat)
+                    filename = os.path.join(options.outputDirectory, filename)
+                    if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
+                        filename = os.path.splitext( filename )[0]
+                    if (os.path.exists(filename)):
+                        if options.verbose == True:
+                            print 'Report file', filename, 'exists, skipping.'
+                        continue
+
             if options.verbose == True:
                 print 'Downloading report for: ', dateString
             webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, selectName:selectName})
@@ -437,6 +459,14 @@ def downloadFile(options):
                 filename = os.path.join(options.outputDirectory, filename)
                 if options.unzipFile == True and filename[-3:] == '.gz': #Chop off .gz extension if not needed
                     filename = os.path.splitext( filename )[0]
+
+                # If optionsFormat was used, make sure the directory requested exists
+                if (options.outputFormat):
+                    fileDirectory = os.path.dirname(filename)
+                    if (os.path.exists(fileDirectory) == False):
+                        if options.verbose == True:
+                            print 'Directory', fileDirectory, 'doesn\'t exist, creating.'
+                        os.makedirs(fileDirectory)
 
                 if options.verbose == True:
                     print 'Saving download file:', filename
@@ -480,6 +510,7 @@ def main():
     options.daysToDownload = daysToDownload
     options.dateToDownload = dateToDownload
     options.outputFormat = outputFormat
+    options.overWriteFiles = overWriteFiles
     options.debug = debug
     
     # Download the file.
