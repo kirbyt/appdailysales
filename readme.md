@@ -82,7 +82,7 @@ Version 2.4 introduces the new --debug flag. This flag will display additional v
 
 # Change History
 
-**Version 2.9.1**
+**Version 2.9.2**
 
   * Updated script to work with latest iTC changes.
 
