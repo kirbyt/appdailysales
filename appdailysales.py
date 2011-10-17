@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2011 Kirby Turner
 #
-# Version 2.9
+# Version 2.9.1
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
@@ -351,11 +351,11 @@ def downloadFile(options):
     try:
         match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
         viewState = match[0]
-        match = re.findall('theForm:j_id_jsp_[0-9]*_6', html)
+        match = re.findall('theForm:j_id_jsp_[0-9]*_39', html)
         dailyName = match[0]
-        ajaxName = re.sub('._6', '_2', dailyName)
-        dateName = re.sub('._6', '_8', dailyName)
-        selectName = re.sub('._6', '_32', dailyName)
+        ajaxName = re.sub('._39', '_2', dailyName)
+        dateName = re.sub('._39', '_8', dailyName)
+        selectName = re.sub('._39', '_32', dailyName)
         if options.debug == True:
             print 'viewState: ', viewState
             print 'dailyName: ', dailyName

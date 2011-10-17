@@ -82,6 +82,10 @@ Version 2.4 introduces the new --debug flag. This flag will display additional v
 
 # Change History
 
+**Version 2.9.1**
+
+  * Updated script to work with latest iTC changes.
+
 **Version 2.9**
 
   * Automatically creates nested directories added to format (-f) strings (eg. -f %Y/%Y-%m/Daily-%Y-%m-%d.txt).  Works with outputDirectory (-o). (Thanks Mike Kasprzak)
