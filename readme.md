@@ -1,3 +1,21 @@
+# This Script has Retired
+
+As of April 28, 2012, the script is once again broken. The likely cause is a change to iTunes Connect website. I no longer have time to maintain the script, so I have decided to retire it.
+
+Here are some suggested alternatives:
+
+- [AppFigures](http://www.appfigures.com/)
+- [App Annie](http://www.appannie.com/)
+- [AppViz](http://www.ideaswarm.com/AppViz2.html)
+
+I will leave the repo here for historical purposes and as a learning guide for screen scraping iTC.
+
+## So Long, and Thanks for all the Fish
+
+I originally wrote the script in the Fall of 2008. I needed an automated way to download daily sales reports from iTC. Over the last 3 and half years I have maintained the script to ensure it works with each unexpected change made to the iTC website. However, I stopped using the script a while ago, and I simply don't have the time to continue maintaining it. It's been a good run, but it's time to retire this puppy.
+
+Thanks to the users, and bigger thanks to those who have contributed to the script over the years.
+
 # Introduction
 
 AppDailySales is a Python script that will download daily sales report files from the iTunes Connect web site.  
