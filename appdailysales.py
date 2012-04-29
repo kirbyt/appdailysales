@@ -351,11 +351,11 @@ def downloadFile(options):
     try:
         match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
         viewState = match[0]
-        match = re.findall('theForm:j_id_jsp_[0-9]*_38', html)
+        match = re.findall('theForm:j_id_jsp_[0-9]*_51', html)
         dailyName = match[0]
-        ajaxName = re.sub('._38', '_2', dailyName)
-        dateName = re.sub('._38', '_8', dailyName)
-        selectName = re.sub('._38', '_32', dailyName)
+        ajaxName = re.sub('._51', '4_2', dailyName)
+        dateName = re.sub('._51', '4_8', dailyName)
+        selectName = re.sub('._51', '4_30', dailyName)
         if options.debug == True:
             print 'viewState: ', viewState
             print 'dailyName: ', dailyName
