@@ -31,6 +31,7 @@
 #   Daniel Dickison
 #   Mike Kasprzak
 #   Shintaro TAKEMURA
+#   aaarrrggh (Paul)
 #
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
