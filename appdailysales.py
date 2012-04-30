@@ -354,9 +354,9 @@ def downloadFile(options):
         viewState = match[0]
         match = re.findall('theForm:j_id_jsp_[0-9]*_51', html)
         dailyName = match[0]
-        ajaxName = re.sub('._51', '4_2', dailyName)
-        dateName = re.sub('._51', '4_8', dailyName)
-        selectName = re.sub('._51', '4_30', dailyName)
+        ajaxName = dailyName.replace('_51', '_2')
+        dateName = dailyName.replace('_51', '_8')
+        selectName = dailyName.replace('_51', '_30')
         if options.debug == True:
             print 'viewState: ', viewState
             print 'dailyName: ', dailyName
