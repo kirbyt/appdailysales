@@ -5,7 +5,7 @@
 # iTune Connect Daily Sales Reports Downloader
 # Copyright 2008-2011 Kirby Turner
 #
-# Version 2.9.2
+# Version 2.9.3
 #
 # Latest version and additional information available at:
 #   http://appdailysales.googlecode.com/
