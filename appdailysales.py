@@ -18,7 +18,7 @@
 #
 # The iTunes Connect web site has dynamic urls and form field
 # names.  In other words, these values change from session to
-# session.  So to get to the download file we must navigate  
+# session.  So to get to the download file we must navigate
 # the site and webscrape the pages.  Joy, joy.
 #
 #
@@ -40,10 +40,10 @@
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -166,7 +166,7 @@ def processCmdArgs():
 
     # Check for command line options. The command line options
     # override the globals set above if present.
-    try: 
+    try:
         opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:n', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'noOverWriteFiles', 'proxy=', 'debug'])
     except getopt.GetoptError, err:
         #print help information and exit
@@ -226,7 +226,7 @@ class MyCookieJar(cookielib.CookieJar):
 def showCookies(cj):
     for index, cookie in enumerate(cj):
         print index, ' : ', cookie
-    
+
 
 def readHtml(opener, url, data=None, options=None):
     request = urllib2.Request(url, data)
@@ -271,11 +271,11 @@ def downloadFile(options):
     urlActionLogin = urlITCBase % match.group(1)
 
 
-    # Login to iTunes Connect web site and go to the sales 
-    # report page, get the form action url and form fields.  
-    # Note the sales report page will actually load a blank 
-    # page that redirects to the static URL. Best guess here 
-    # is that the server is setting some session variables 
+    # Login to iTunes Connect web site and go to the sales
+    # report page, get the form action url and form fields.
+    # Note the sales report page will actually load a blank
+    # page that redirects to the static URL. Best guess here
+    # is that the server is setting some session variables
     # or something.
     webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password, '1.Continue':'0'})
     html = readHtml(opener, urlActionLogin, webFormLoginData, options=options)
@@ -285,7 +285,7 @@ def downloadFile(options):
     # Find the Sales and Trends URL.
     if options.verbose == True:
         print 'Accessing Sales and Trends reporting web site.'
-    
+
     # Sometimes the vendor default page does not load right away.
     # This causes the script to fail, so as a work around, the
     # script will attempt to load the page 3 times before abend.
@@ -317,7 +317,7 @@ def downloadFile(options):
                 else:
                     raise ITCException, errMessage
 
-    # This may seem confusing because we just accessed the vendor default page in the 
+    # This may seem confusing because we just accessed the vendor default page in the
     # code above. However, the vendor default page as a piece of javascript that runs
     # once the page is loaded in the browser. The javascript does a resubmit. My guess
     # is this action is needed to set the default vendor on the server-side. Regardless
@@ -356,7 +356,7 @@ def downloadFile(options):
         dailyName = match[0]
         ajaxName = dailyName.replace('_51', '_2')
         dateName = dailyName.replace('_51', '_8')
-        selectName = dailyName.replace('_51', '_30')
+        selectName = dailyName.replace('_51', '_29')
         if options.debug == True:
             print 'viewState: ', viewState
             print 'dailyName: ', dailyName
@@ -421,7 +421,7 @@ def downloadFile(options):
     for downloadReportDate in reportDates:
         # Set the date within the web page.
         dateString = downloadReportDate.strftime('%m/%d/%Y')
-        
+
         if dateString in dateListAvailableDays:
             # If told not to overwrite files, check before downloading
             if (options.overWriteFiles == False):
@@ -450,8 +450,8 @@ def downloadFile(options):
             try:
                 if options.debug == True:
                     print urlHandle.info()
-                    
-                # Check for the content-disposition. If present then we know we have a 
+
+                # Check for the content-disposition. If present then we know we have a
                 # file to download. If not present then an AttributeError exception is
                 # thrown and we assume the file is not available for download.
                 filename = urlHandle.info().getheader('content-disposition').split('=')[1]
@@ -514,7 +514,7 @@ def downloadFile(options):
 def main():
     if processCmdArgs() > 0:    # Will exit if usgae requested or invalid argument found.
       return 2
-      
+
     # Set report options.
     options = ReportOptions()
     options.appleId = appleId
@@ -528,7 +528,7 @@ def main():
     options.overWriteFiles = overWriteFiles
     options.proxy = proxy
     options.debug = debug
-    
+
     # Download the file.
     try:
         downloadFile(options)
